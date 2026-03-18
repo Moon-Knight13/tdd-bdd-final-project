@@ -27,10 +27,9 @@ import os
 import logging
 import unittest
 from decimal import Decimal
-from service.models import Product, Category, db
+from service.models import Product, Category, db, DataValidationError
 from service import app
 from tests.factories import ProductFactory
-
 
 DATABASE_URI = os.getenv(
     "DATABASE_URI", "postgresql://postgres:postgres@localhost:5432/postgres"
@@ -119,7 +118,7 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(found_product.description, product.description)
         self.assertEqual(found_product.price, product.price)
 
-   def test_update_a_product(self):
+    def test_update_a_product(self):
         """It should Update a Product"""
         product = ProductFactory()
         product.id = None
@@ -138,6 +137,14 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(products[0].id, original_id)
         self.assertEqual(products[0].description, "testing")
 
+    def test_update_a_product_with_no_id(self):
+        """It should raise DataValidationError when updating a Product with empty ID"""
+        product = ProductFactory()  # Create a product using the factory
+        product.id = None  # Explicitly set ID to None
+
+        with self.assertRaises(DataValidationError):
+            product.update()
+
     def test_delete_a_product(self):
         """It should Delete a Product"""
         product = ProductFactory()
@@ -146,7 +153,6 @@ class TestProductModel(unittest.TestCase):
         # delete the product and make sure it isn't in the database
         product.delete()
         self.assertEqual(len(Product.all()), 0)
-
 
     def test_list_all_products(self):
         """It should List all Products in the database"""
