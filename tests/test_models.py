@@ -27,7 +27,9 @@ import os
 import logging
 import unittest
 from decimal import Decimal
-from service.models import Product, Category, db, DataValidationError
+from nose.tools import assert_raises
+from service.models import DataValidationError
+from service.models import Product, Category, db
 from service import app
 from tests.factories import ProductFactory
 
@@ -101,10 +103,6 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(new_product.available, product.available)
         self.assertEqual(new_product.category, product.category)
 
-    #
-    # ADD YOUR TEST CASES HERE
-    #
-
     def test_read_a_product(self):
         """It should Read a Product"""
         product = ProductFactory()
@@ -136,14 +134,6 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(len(products), 1)
         self.assertEqual(products[0].id, original_id)
         self.assertEqual(products[0].description, "testing")
-
-    def test_update_a_product_with_no_id(self):
-        """It should raise DataValidationError when updating a Product with empty ID"""
-        product = ProductFactory()  # Create a product using the factory
-        product.id = None  # Explicitly set ID to None
-
-        with self.assertRaises(DataValidationError):
-            product.update()
 
     def test_delete_a_product(self):
         """It should Delete a Product"""
@@ -201,3 +191,56 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(found.count(), count)
         for product in found:
             self.assertEqual(product.category, category)
+
+# Additional tests to capture raised errors
+
+    def test_deserialize_invalid_available_type(self):
+        """deserialize should raise DataValidationError when available is not a bool"""
+        product = Product()
+        data = {
+            "name": "Test",
+            "description": "d",
+            "price": "9.99",
+            "available": "notabool",
+            "category": "ELECTRONICS"
+        }
+        with assert_raises(DataValidationError):
+            product.deserialize(data)
+
+    def test_deserialize_missing_key_raises(self):
+        """deserialize should raise DataValidationError when a required key is missing"""
+        product = Product()
+        data = {
+            "name": "Test",
+            # description missing
+            "price": "9.99",
+            "available": True,
+            "category": "ELECTRONICS"
+        }
+        with assert_raises(DataValidationError):
+            product.deserialize(data)
+
+    def test_deserialize_type_error_raises(self):
+        """deserialize should raise DataValidationError when input is not a dict (TypeError)"""
+        product = Product()
+        with assert_raises(DataValidationError):
+            product.deserialize(None)
+
+    def test_deserialize_invalid_category_raises(self):
+        """deserialize should raise DataValidationError when category name is invalid (AttributeError)"""
+        product = Product()
+        data = {
+            "name": "Test",
+            "description": "d",
+            "price": "9.99",
+            "available": True,
+            "category": "NON_EXISTENT_CATEGORY"
+        }
+        with assert_raises(DataValidationError):
+            product.deserialize(data)
+
+    def test_update_without_id_raises(self):
+        """Update should raise DataValidationError when id is missing"""
+        product = Product()
+        with assert_raises(DataValidationError):
+            product.update()
